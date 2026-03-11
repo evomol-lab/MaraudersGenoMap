@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# A bash script to automate a *de novo* genome assembly pipeline.
+# A bash script to automate *de novo* transcriptome assembly using Trinity.
 # The script will stop immediately if any command fails.
 set -e
 
@@ -8,9 +8,11 @@ set -e
 # Path to the Trimmomatic adapter file.
 # You may need to change this to the correct path on your system.
 ADAPTERS="/usr/share/trimmomatic/TruSeq3-PE-2.fa"
-# Maximum RAM (in Gb) to use for SPAdes assembly.
+# Maximum RAM (in Gb) to use for Trinity assembly.
 # Set to 8 for low-resource systems, adjust if needed (e.g., 4 or 16).
 MAX_RAM=8
+# Number of CPU threads to use
+THREADS=2
 
 ## --- Input Validation ---
 if [ "$#" -ne 2 ]; then
@@ -26,50 +28,48 @@ READ2=$2
 
 # Create a base name for output files
 PREFIX=$(basename ${READ1} _1.fastq.gz)
-echo "=> Starting pipeline for sample: ${PREFIX}"
+echo "=> Starting Trinity pipeline for sample: ${PREFIX}"
 
 ## --- Step 1: Raw Read Quality Control (FastQC) ---
 echo "### STEP 1: Running FastQC on raw reads ###"
 mkdir -p 01_QC_Reports
-fastqc --threads 2 -o 01_QC_Reports ${READ1} ${READ2}
+fastqc --threads ${THREADS} -o 01_QC_Reports ${READ1} ${READ2}
 
 ## --- Step 2: Adapter and Quality Trimming (Trimmomatic) ---
 echo "### STEP 2: Trimming adapters and low-quality reads with Trimmomatic ###"
 mkdir -p 02_Trimmed_Reads
-TrimmomaticPE -phred33 \
+TrimmomaticPE -threads ${THREADS} -phred33 \
     ${READ1} ${READ2} \
     02_Trimmed_Reads/${PREFIX}_1_paired.fastq.gz 02_Trimmed_Reads/${PREFIX}_1_unpaired.fastq.gz \
     02_Trimmed_Reads/${PREFIX}_2_paired.fastq.gz 02_Trimmed_Reads/${PREFIX}_2_unpaired.fastq.gz \
     ILLUMINACLIP:${ADAPTERS}:2:30:10 \
     LEADING:20 TRAILING:20 SLIDINGWINDOW:4:20 MINLEN:50
 
-## --- Step 3: Digital Normalization (bbnorm.sh) ---
-echo "### STEP 3: Normalizing read coverage with bbnorm.sh ###"
-mkdir -p 03_Normalized_Reads
-bbnorm.sh in1=02_Trimmed_Reads/${PREFIX}_1_paired.fastq.gz \
-          in2=02_Trimmed_Reads/${PREFIX}_2_paired.fastq.gz \
-          out1=03_Normalized_Reads/${PREFIX}_1_normalized.fastq.gz \
-          out2=03_Normalized_Reads/${PREFIX}_2_normalized.fastq.gz \
-          target=100
+## --- Step 3: De Novo Assembly (Trinity) ---
+# We do not use bbnorm here because Trinity has built-in in silico read normalization, which it runs by default
+# to keep memory usage low.
+echo "### STEP 3: Assembling trimmed paired reads with Trinity ###"
+OUT_DIR="03_Trinity_Assembly_${PREFIX}"
+
+Trinity --seqType fq \
+    --left 02_Trimmed_Reads/${PREFIX}_1_paired.fastq.gz \
+    --right 02_Trimmed_Reads/${PREFIX}_2_paired.fastq.gz \
+    --CPU ${THREADS} \
+    --max_memory ${MAX_RAM}G \
+    --output ${OUT_DIR}
 
 ## --- Step 4: Post-Processing QC and Aggregation (FastQC + MultiQC) ---
-echo "### STEP 4: Running FastQC on normalized reads and creating MultiQC report ###"
-# Run FastQC on the newly normalized paired reads
-fastqc -o 01_QC_Reports 03_Normalized_Reads/${PREFIX}_*_normalized.fastq.gz
+echo "### STEP 4: Running FastQC on trimmed reads and creating MultiQC report ###"
+# Run FastQC on the trimmed paired reads
+fastqc --threads ${THREADS} -o 01_QC_Reports 02_Trimmed_Reads/${PREFIX}_*_paired.fastq.gz
 
 # Run MultiQC to aggregate all reports
 echo "=> Aggregating QC reports with MultiQC..."
 mkdir -p 04_MultiQC_Report
 multiqc . -o 04_MultiQC_Report
 
-## --- Step 5: De Novo Assembly (SPAdes) ---
-echo "### STEP 5: Assembling normalized reads with SPAdes ###"
-spades.py --careful --phred-offset 33 --memory ${MAX_RAM} \
-    -1 03_Normalized_Reads/${PREFIX}_1_normalized.fastq.gz \
-    -2 03_Normalized_Reads/${PREFIX}_2_normalized.fastq.gz \
-    -o 05_SPAdes_Assembly_${PREFIX}
-
 ## --- Pipeline Complete ---
 echo "✅ Pipeline finished successfully!"
 echo "=> Final QC report is in '04_MultiQC_Report/multiqc_report.html'"
-echo "=> Assembly results are in the '05_SPAdes_Assembly_${PREFIX}' directory."
+echo "=> Assembly results are in the '${OUT_DIR}' directory."
+echo "=> The final assembled sequences are in '${OUT_DIR}/Trinity.fasta'"

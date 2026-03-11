@@ -84,35 +84,55 @@ The script [`SRAget.sh`](SRAget.sh) download and proccess the NGS sequecing file
 This script handles data download, QC, trimming, normalization, and assembly. Choose the correct script to execute.
 - [assembly-spades.sh](assembly-spades.sh).
 - [assembly-megahit.sh](assembly-megahit.sh).
-- [assembly-trinity.sh] - It will be added later.
+- [assembly-trinity.sh](assembly-trinity.sh) - NEW.
 
-1.  **Configure the script**: Ensure the paths and parameters inside the script (e.g., adapter file location) are correct for your system.
-2.  **Execute**:
-    ```bash
-    # For a MEGAHIT assembly (recommended for < 64GB RAM)
-    ./assembly_megahit.sh SRR_ACCESSION_1.fastq.gz SRR_ACCESSION_2.fastq.gz
-    ```
-    This will produce an output directory (e.g., `05_MEGAHIT_Assembly_...`) containing your final assembly file, `final.contigs.fa`.
+#### Choosing the Assembly Script:
+
+Choosing the appropriate tool depends on your research goals, available hardware/computer resources, and personal preference (see the summary table below). If your system has less than 64 GB of RAM, we recommend starting with MEGAHIT.
+
+SPAdes and Trinity are significantly more memory-intensive. While the scripts provided below include options to cap RAM usage for these programs, please note that such limitations may render the assembly unfeasible depending on the size and complexity of your dataset—either due to excessive processing times or reaching computational limits.
+
+Read normalization via **BBnorm** is only performed for MEGAHIT and SPAdes. In contrast, Trinity features an integrated in silico normalization utility, which it runs by default to minimize memory overhead.
+
+| Script | Data Type | Recommended RAM | Notes |
+| :--- | :--- | :--- | :--- |
+| [assembly-spades.sh](assembly-spades.sh) | Genomic | \>64 GB | High accuracy |
+| [assembly-megahit.sh](assembly-megahit.sh) | Genomic | \<8 GB | Fast and memory-efficient |
+| [assembly-trinity.sh](assembly-trinity.sh) | Transcriptomic | \<8 GB | Gold standard for RNA-Seq |
+
+#### Configure the script:
+Ensure the paths and parameters inside the script (e.g., adapter file location) are correct for your system.
+#### Execute:
+
+```bash
+./assembly_megahit.sh SRR_ACCESSION_1.fastq.gz SRR_ACCESSION_2.fastq.gz
+```
+    
+This will produce an output directory (e.g., `05_MEGAHIT_Assembly_...`) containing your final assembly file, `final.contigs.fa`.
 
 ### Part 2: Protein Search (`ProtSearch.sh`)
 
 This script predicts genes and searches for your protein family.
 
-1.  **Download an HMM Profile**: Obtain a profile for your family of interest from the [Pfam database](https://www.ebi.ac.uk/interpro/entry/pfam/).
-2.  **Execute**:
-    ```bash
-    ./ProtSearch.sh 05_MEGAHIT_Assembly/final.contigs.fa Your_Family.hmm
-    ```
-    This generates a directory (`02_HMMER_Results`) containing a table of significant hits.
+#### Download an HMM Profile: 
+Obtain a profile for your family of interest from the [Pfam database](https://www.ebi.ac.uk/interpro/entry/pfam/).
+#### Execute:
+
+```bash
+./ProtSearch.sh 05_MEGAHIT_Assembly/final.contigs.fa Your_Family.hmm
+```
+This generates a directory (`02_HMMER_Results`) containing a table of significant hits.
 
 ### Part 3: Sequence Extraction (`get_Seq_results.sh`)
 
 This final script retrieves the full sequences of the proteins you found.
 
-1.  **Execute**:
-    ```bash
-    ./get_Seq_results.sh 02_HMMER_Results/Your_Family_hits.tbl 01_Predicted_Proteins/predicted_proteins.faa
-    ```
-    The final output is a clean FASTA file (e.g., `protein_hits.faa`) containing only the protein sequences of interest, ready for further analysis.
+#### Execute:
+
+```bash
+./get_Seq_results.sh 02_HMMER_Results/Your_Family_hits.tbl 01_Predicted_Proteins/predicted_proteins.faa
+```
+
+The final output is a clean FASTA file (e.g., `protein_hits.faa`) containing only the protein sequences of interest, ready for further analysis.
 
 -----
