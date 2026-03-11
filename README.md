@@ -113,6 +113,6 @@ This final script retrieves the full sequences of the proteins you found.
     ```bash
     ./get_Seq_results.sh 02_HMMER_Results/Your_Family_hits.tbl 01_Predicted_Proteins/predicted_proteins.faa
     ```
-    The final output is a clean FASTA file (e.g., `protein_hits.faa`) containing only the protein sequences of interest, ready for further analysis. ✨
+    The final output is a clean FASTA file (e.g., `protein_hits.faa`) containing only the protein sequences of interest, ready for further analysis.
 
 -----
