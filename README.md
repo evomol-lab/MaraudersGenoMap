@@ -3,13 +3,13 @@
 
 # Marauder's GenoMap 🗺️
 
-A comprehensive pipeline for the discovery of protein families in *de novo* assembled genomes and transcriptomes.
+A comprehensive pipeline for the discovery of protein domains and families in *de novo* assembled genomes and transcriptomes.
 
 -----
 
-`Marauder's GenoMap` is a bioinformatics pipeline designed to identify specific protein families in plant genomes or transcriptomes, particularly for non-model organisms where no reference genome is available.
+`Marauder's GenoMap` is a bioinformatics pipeline designed to prospect for and identify specific protein domains and families in genomes or transcriptomes, particularly for non-model organisms for which no reference genome is available. It can also be used to perform comparative genomics and to search for unidentified potential biotechnological targets.
 
-The pipeline automates the entire discovery process, from raw sequencing data to a final list of protein sequences. It begins by retrieving data from the [SRA](https://www.ncbi.nlm.nih.gov/sra), performs quality control and *de novo* assembly, predicts protein-coding genes, and finally uses [HMMER](http://hmmer.org/) and [Pfam](http://pfam.xfam.org/) profiles to perform a sensitive protein family search.
+The pipeline automates the entire discovery process, from raw sequencing data to a final list of protein sequences. It begins by retrieving data from the [SRA](https://www.ncbi.nlm.nih.gov/sra), performs quality control and *de novo* assembly, predicts protein-coding genes, and finally uses [HMMER](http://hmmer.org/) and [Pfam](http://pfam.xfam.org/) profiles to perform a sensitive protein family search. This approach allows identification of retained protein function, even with low sequence identity.
 
 This pipeline is optimized for gene discovery and annotation. It does not focus on differential gene expression or other quantitative analyses.
 
