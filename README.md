@@ -1,30 +1,38 @@
+![MaraudersGenoMap-logo](MaraudersGenoMap.png)
+
 # Marauders GenoMap
 
-Marauders GenoMap e uma interface grafica em Python/PyQt6 para baixar dados SRA, executar montagem genomica/transcriptomica, buscar dominios proteicos com HMMER e explorar os resultados gerados em pastas organizadas por accession SRA.
+Marauders GenoMap is a Python/PyQt6 graphical interface for downloading SRA data, performing genomic/transcriptomic assembly, searching for protein domains using HMMER, and exploring results in folders organized by SRA accession number.
 
-O programa foi pensado para execucao local. A GUI chama os scripts da pasta `scripts/` e cada etapa cria subpastas dentro da pasta do codigo SRA informado, por exemplo `SRRXXXXXX/01_QC_Reports`, `SRRXXXXXX/05_Assembly_Results` e `SRRXXXXXX/02_HMMER_Results`.
+The program was designed for local execution. The GUI calls scripts from the `scripts/` folder, and each step creates subfolders within the provided SRA code folder, for example: `SRRXXXXXX/01_QC_Reports`, `SRRXXXXXX/05_Assembly_Results`, and `SRRXXXXXX/02_HMMER_Results`.
 
-## Docker e Singularity/Apptainer
+## Docker and Singularity/Apptainer
 
-O projeto inclui arquivos para gerar uma imagem local com as dependencias principais:
+The project includes files to generate a local image with the main dependencies:
 
-- `Dockerfile`: imagem Docker baseada em `debian:trixie-slim`.
-- `.dockerignore`: evita copiar ambientes virtuais, dados SRA, FASTQ, BAM/SAM, FASTA, resultados e caches para dentro da imagem.
-- `Makefile`: atalhos para build e execucao.
+- `Dockerfile`: Docker image based on `debian:trixie-slim`.
 
-A imagem inclui MEGAHIT, SPAdes e Trinity, alem de Salmon, SRA Toolkit, FastQC, Trimmomatic, BBMap, MultiQC, Prodigal, HMMER, SeqTK, Bowtie2, Samtools, PyQt6, Pandas, Matplotlib e Biopython.
+- `.dockerignore`: Prevents copying virtual environments, SRA data, FASTQ, BAM/SAM, FASTA, results, and caches into the image.
 
-### Obter imagem Docker no DockerHub
+- `Makefile`: Shortcuts for build and execution.
 
-Para baixar a versão mais recente, execute o comando abaixo no seu terminal:
+The image includes MEGAHIT, SPAdes, and Trinity, as well as Salmon, SRA Toolkit, FastQC, Trimmomatic, BBMap, MultiQC, Prodigal, HMMER, SeqTK, Bowtie2, Samtools, PyQt6, Pandas, Matplotlib, and Biopython.
 
-```bash
+### Obtain Docker image from DockerHub
+
+To download the latest version, run the following command in your terminal:
+
+Bash
+
+```
 docker pull evomol/marauders-genomap
 ```
 
-e rodar a imagem:
+And run the image:
 
-```bash
+Bash
+
+```
 docker run --rm -it \
     --network host \
     --user $(id -u):$(id -g) \
@@ -39,65 +47,82 @@ docker run --rm -it \
     evomol/marauders-genomap:latest bash -c "python3 /app/marauders.py"
 ```
 
-### Gerar imagem Docker local
+### Build Docker image locally
 
-```bash
+Bash
+
+```
 make docker-build
 ```
 
-Esse alvo executa o build com nome/tag definido:
+This target executes the build with a defined name/tag:
 
-```bash
+Bash
+
+```
 docker build --no-cache -t marauders-genomap .
 ```
 
-O uso de `-t marauders-genomap:latest` e importante porque da um nome previsivel para a imagem final. Sem essa tag, o Docker ainda cria a imagem, mas ela pode ficar sem nome claro, dificultando a execucao depois.
+Using `-t marauders-genomap:latest` is important because it provides a predictable name for the final image. Without this tag, Docker still creates the image, but it may remain unnamed, making subsequent execution difficult.
 
-O `--no-cache` evita reaproveitar camadas antigas quando a base ou as dependencias mudam.
+The `--no-cache` option prevents reusing cached layers when the base or its dependencies change.
 
-Para fazer um build mais rapido reaproveitando cache:
+To perform a faster build reusing the cache:
 
-```bash
+Bash
+
+```
 make docker-build-cache
 ```
 
-Esse alvo equivale a:
+This target is equivalent to:
 
-```bash
+Bash
+
+```
 docker build -t marauders-genomap .
 ```
 
-Depois do build, e normal aparecerem pelo menos duas imagens ao listar com `docker images` ou ferramentas graficas:
+After the build, it is normal for at least two images to appear when listing with `docker images` or graphical tools:
 
-- `debian:trixie-slim`: imagem base baixada pelo Docker, pequena, usada para construir a imagem final;
-- `marauders-genomap:latest`: imagem final do Marauders GenoMap, esta e a imagem que deve ser executada.
+- `debian:trixie-slim`: Base image downloaded by Docker, small, used to build the final image;
 
-A imagem `debian:trixie-slim` pode ficar no sistema sem problema. Ela ocupa pouco espaco e acelera builds futuros. Se quiser remover, use:
+- `marauders-genomap:latest`: Final Marauders GenoMap image; this is the image that should be executed.
 
-```bash
+The `debian:trixie-slim` image can remain on the system without issue. It occupies little space and accelerates future builds. If you want to remove it, use:
+
+Bash
+
+```
 docker rmi debian:trixie-slim
 ```
 
-### Rodar a GUI com Docker
+### Running the GUI with Docker
 
-Antes de abrir a interface, permita acesso local ao servidor X11:
+Before opening the interface, allow local access to the X11 server:
 
-```bash
+Bash
+
+```
 xhost +local:docker
 ```
 
-Depois, entre na pasta do projeto, onde esta o `Makefile`, e inicie a imagem final `marauders-genomap:latest`:
+Then, enter the project folder where the `Makefile` is located and start the final `marauders-genomap:latest` image:
 
-```bash
-cd /caminho/para/sua/pasta/de/projetos
+Bash
+
+```
+cd /path/to/your/project/folder
 make docker-run
 ```
 
-O `make docker-run` precisa ser executado dentro da pasta do Marauders GenoMap. O `make` procura o `Makefile` no diretorio atual, e esse alvo monta a pasta atual (`$PWD`) em `/app` dentro do container.
+The `make docker-run` command must be executed within the Marauders GenoMap folder. The `make` command looks for the `Makefile` in the current directory, and this target mounts the current folder (`$PWD`) to `/app` inside the container.
 
-Se quiser iniciar a imagem de qualquer outro diretorio, use o comando Docker completo apontando para a pasta do projeto:
+If you want to start the image from any other directory, use the full Docker command pointing to the project folder:
 
-```bash
+Bash
+
+```
 docker run --rm -it \
   --network host \
   --user $(id -u):$(id -g) \
@@ -107,34 +132,40 @@ docker run --rm -it \
   -e QT_X11_NO_MITSHM=1 \
   -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
   -v "${XAUTHORITY:-$HOME/.Xauthority}:/tmp/.Xauthority:ro" \
-  -v "/caminho/para/sua/pasta/de/projetos":/app \
+  -v "/path/to/your/project/folder":/app \
   -w /app \
   marauders-genomap:latest
 ```
 
-O alvo `make docker-run` executa a mesma ideia, usando automaticamente a pasta atual (deve estar na pasta do Marauders).
+The `make docker-run` target executes the same concept, automatically using the current folder (you must be in the Marauders folder).
 
-O `docker-run` monta a pasta atual em `/app`, entao os arquivos baixados e resultados permanecem no diretorio do projeto, nao dentro de uma camada temporaria do container.
+`docker-run` mounts the current folder to `/app`, so downloaded files and results remain in the project directory rather than in a temporary container layer.
 
-Ao terminar, voce pode revogar a permissao:
+When finished, you can revoke permission:
 
-```bash
+Bash
+
+```
 xhost -local:docker
 ```
 
-### Usar com Singularity/Apptainer
+### Using with Singularity/Apptainer
 
-O projeto nao precisa manter um `Singularity.def` separado se a imagem Docker for publicada no Docker Hub ou em outro registry compativel. Singularity/Apptainer conseguem baixar uma imagem Docker diretamente e converter para `.sif` localmente.
+The project does not need to maintain a separate `Singularity.def` if the Docker image is published on Docker Hub or another compatible registry. Singularity/Apptainer can download a Docker image directly and convert it to `.sif` locally.
 
-Com Singularity:
+With Singularity:
 
-```bash
+Bash
+
+```
 singularity pull marauders-genomap.sif docker://evomol/marauders-genomap
 ```
 
-Depois rode:
+Then run:
 
-```bash
+Bash
+
+```
 singularity run \
   --writable-tmpfs \
   --bind "$PWD":/app \
@@ -144,15 +175,19 @@ singularity run \
   marauders-genomap.sif
 ```
 
-Com Apptainer:
+With Apptainer:
 
-```bash
+Bash
+
+```
 apptainer pull marauders-genomap.sif docker://evomol/marauders-genomap
 ```
 
-Depois rode:
+Then run:
 
-```bash
+Bash
+
+```
 apptainer run \
   --writable-tmpfs \
   --bind "$PWD":/app \
@@ -162,191 +197,239 @@ apptainer run \
   marauders-genomap.sif
 ```
 
-O Docker Hub hospeda imagens Docker. Ele não é, em geral, um repositorio nativo de arquivos `.sif`, mas pode servir a mesma imagem Docker para usuarios Docker e tambem para usuarios Singularity/Apptainer.
+Docker Hub hosts Docker images. It is not, in general, a native repository for `.sif` files, but it can serve the same Docker image to both Docker and Singularity/Apptainer users.
 
-## Como Executar Localmente Sem Container
+## How to run locally without a container
 
-Se as dependencias ja estiverem instaladas no sistema:
+If the dependencies are already installed on the system:
 
-```bash
+Bash
+
+```
 make run
 ```
 
-O alvo `install` cria um comando local chamado `marauders`, apontando para a pasta atual:
+The `install` target creates a local command called `marauders`, pointing to the current folder:
 
-```bash
+Bash
+
+```
 make install
 ```
 
-Para remover:
+To remove:
 
-```bash
+Bash
+
+```
 make uninstall
 ```
 
-## Fluxo das Abas do Programa
+## Program Tab Flow
 
-O programa possui 5 abas principais. O ID SRA informado na primeira aba e usado pelas demais etapas para localizar entradas e resultados automaticamente.
+The program has 5 main tabs. The SRA ID provided in the first tab is used by the subsequent steps to automatically locate inputs and results.
 
 ### 1. Download
 
-Funcao: baixar os dados brutos do SRA e preparar os FASTQ compactados.
+Function: download raw SRA data and prepare compressed FASTQ files.
 
-Script usado:
+Script used:
 
 - `scripts/SRAget.sh`
 
-O que a aba faz:
+What the tab does:
 
-- recebe o accession SRA;
-- permite escolher o tipo de amostra;
-- para transcriptomica/metatranscriptomica, permite escolher layout paired-end ou single-end;
-- cria uma pasta com o nome do accession;
-- executa `prefetch`;
-- executa `fasterq-dump` ou `fastq-dump` como fallback;
-- compacta os FASTQ com `pigz`.
+- Receives the SRA accession;
 
-Arquivos esperados apos a etapa:
+- Allows selecting the sample type;
 
-- `SRA_ID/SRA_ID_1.fastq.gz` e `SRA_ID/SRA_ID_2.fastq.gz` para paired-end;
-- `SRA_ID/SRA_ID.fastq.gz` para single-end.
+- For transcriptomics/metatranscriptomics, allows choosing paired-end or single-end layout;
+
+- Creates a folder with the accession name;
+
+- Executes `prefetch`;
+
+- Executes `fasterq-dump` or `fastq-dump` as a fallback;
+
+- Compresses FASTQ files with `pigz`.
+
+Expected files after this step:
+
+- `SRA_ID/SRA_ID_1.fastq.gz` and `SRA_ID/SRA_ID_2.fastq.gz` for paired-end;
+
+- `SRA_ID/SRA_ID.fastq.gz` for single-end.
 
 ### 2. Assembly
 
-Funcao: executar controle de qualidade, trimming, normalizacao, MultiQC e montagem.
+Function: execute quality control, trimming, normalization, MultiQC, and assembly.
 
-Script usado:
+Script used:
 
 - `scripts/run_assembly.sh`
 
-O que a aba faz:
+What the tab does:
 
-- seleciona o montador: MEGAHIT, SPAdes ou Trinity;
-- ajusta threads e RAM;
-- mostra uma recomendacao de GB por thread;
-- permite remover arquivos brutos e/ou a pasta de trimming ao final;
-- roda FastQC, Trimmomatic, BBNorm, MultiQC e o montador escolhido.
+- Selects the assembler: MEGAHIT, SPAdes, or Trinity;
 
-Regras da interface:
+- Adjusts threads and RAM;
 
-- MEGAHIT e recomendado para metagenomas e execucao rapida;
-- SPAdes fica disponivel para genomica de isolados;
-- Trinity fica disponivel para transcriptomica e metatranscriptomica.
+- Shows a recommended GB per thread;
 
-Pastas criadas dentro da pasta SRA:
+- Allows removing raw files and/or the trimming folder at the end;
+
+- Runs FastQC, Trimmomatic, BBNorm, MultiQC, and the chosen assembler.
+
+Interface rules:
+
+- MEGAHIT is recommended for metagenomes and fast execution.
+
+- SPAdes is available for isolate genomics.
+
+- Trinity is available for transcriptomics and metatranscriptomics.
+
+Folders created within the SRA folder:
 
 - `01_QC_Reports`
+
 - `02_Trimmed_Reads`
+
 - `03_Normalized_Reads`
+
 - `04_MultiQC_Report`
+
 - `05_Assembly_Results`
 
-Saidas principais:
+Main outputs:
 
 - MEGAHIT: `05_Assembly_Results/MEGAHIT_*/final.contigs.fa`
-- SPAdes: `05_Assembly_Results/SPADES_*/scaffolds.fasta` ou `contigs.fasta`
-- Trinity: arquivos `*.Trinity.fasta`
+
+- SPAdes: `05_Assembly_Results/SPADES_*/scaffolds.fasta` or `contigs.fasta`
+
+- Trinity: `*.Trinity.fasta` files
 
 ### 3. Protein Search
 
-Funcao: predizer proteinas a partir dos contigs e buscar dominios usando um perfil HMM.
+Function: predict proteins from contigs and search for domains using an HMM profile.
 
-Script usado:
+Script used:
 
 - `scripts/ProtSearch.sh`
 
-O que a aba faz:
+What the tab does:
 
-- recebe um arquivo `.hmm`;
-- detecta automaticamente o arquivo de contigs gerado pelo montador selecionado;
-- escolhe o modo do Prodigal:
-  - `single` para genomica;
-  - `meta` para metagenomica/metatranscriptomica;
-- executa Prodigal para gerar proteinas preditas;
-- executa `hmmsearch` para gerar a tabela de hits.
+- Receives a `.hmm` file;
 
-Pastas criadas dentro da pasta SRA:
+- Automatically detects the contigs file generated by the selected assembler;
+
+- Chooses the Prodigal mode:
+  
+  - `single` for genomics;
+  
+  - `meta` for metagenomics/metatranscriptomics;
+
+- Executes Prodigal to generate predicted proteins;
+
+- Executes `hmmsearch` to generate the hits table.
+
+Folders created within the SRA folder:
 
 - `01_Predicted_Proteins`
+
 - `02_HMMER_Results`
 
-Saidas principais:
+Main outputs:
 
 - `01_Predicted_Proteins/predicted_proteins.faa`
+
 - `02_HMMER_Results/*_domain_hits.tbl`
 
 ### 4. Get Results
 
-Funcao: extrair sequencias proteicas associadas aos hits detectados pelo HMMER.
+Function: extract protein sequences associated with the hits detected by HMMER.
 
-Script usado:
+Script used:
 
 - `scripts/get_Seq_results.sh`
 
-O que a aba faz:
+What the tab does:
 
-- localiza automaticamente a tabela `.tbl` em `02_HMMER_Results`;
-- localiza `01_Predicted_Proteins/predicted_proteins.faa`;
-- extrai IDs unicos da primeira coluna da tabela HMMER;
-- usa `seqtk subseq` para recuperar as sequencias correspondentes.
+- Automatically locates the `.tbl` table in `02_HMMER_Results`;
 
-Saidas principais:
+- Locates `01_Predicted_Proteins/predicted_proteins.faa`;
 
-- `protein_ids_to_extract.txt` temporario;
-- `lectin_hits.faa` com as sequencias extraidas.
+- Extracts unique IDs from the first column of the HMMER table;
 
-### 5. Analise & Cortes
+- Uses `seqtk subseq` to recover the corresponding sequences.
 
-Funcao: visualizar hits, selecionar alvos e extrair/cortar sequencias especificas.
+Main outputs:
 
-Scripts usados:
+- Temporary `protein_ids_to_extract.txt`;
 
-- essa aba usa funcoes internas do `marauders.py`;
-- nao chama um script externo diretamente.
+- `lectin_hits.faa` with the extracted sequences.
 
-O que a aba faz:
+### 5. Analysis & Cutting
 
-- carrega automaticamente uma tabela `.tbl` da pasta `SRA_ID/02_HMMER_Results`;
-- tambem permite selecionar uma tabela `.tbl` manualmente;
-- filtra hits com `full_E-value < 0.0001`;
-- mostra os 25 primeiros hits;
-- ao clicar em uma linha, transfere o `target_name` para o extrator Severus Snap(e);
-- localiza automaticamente `SRA_ID/01_Predicted_Proteins/predicted_proteins.faa` ou aceita um FASTA manual;
-- salva sequencias encontradas pelo termo informado;
-- quando possivel, corta a regiao usando coordenadas presentes na descricao FASTA;
-- gera histograma de tamanhos das sequencias com Matplotlib.
+Function: visualize hits, select targets, and extract/cut specific sequences.
 
-## Scripts da Pasta `scripts/`
+Scripts used:
+
+- This tab uses internal `marauders.py` functions;
+
+- It does not call an external script directly.
+
+What the tab does:
+
+- Automatically loads a `.tbl` table from the `SRA_ID/02_HMMER_Results` folder;
+
+- Also allows manual selection of a `.tbl` table;
+
+- Filters hits with `full_E-value < 0.0001`;
+
+- Shows the top 25 hits;
+
+- Clicking a row transfers the `target_name` to the Severus Snap(e) extractor;
+
+- Automatically locates `SRA_ID/01_Predicted_Proteins/predicted_proteins.faa` or accepts a manual FASTA;
+
+- Saves sequences found by the provided term;
+
+- When possible, cuts the region using coordinates present in the FASTA description;
+
+- Generates a sequence length histogram with Matplotlib.
+
+## Scripts in the `scripts/` folder
 
 ### `SRAget.sh`
 
-Baixa e extrai leituras SRA. Usa `prefetch`, `fasterq-dump`, fallback com `fastq-dump` e compactacao com `pigz`.
+Downloads and extracts SRA reads. Uses `prefetch`, `fasterq-dump`, fallback with `fastq-dump`, and compression with `pigz`.
 
 ### `run_assembly.sh`
 
-Executa o pipeline de montagem. Usa FastQC, Trimmomatic, BBNorm, MultiQC e um dos montadores: MEGAHIT, SPAdes ou Trinity.
+Executes the assembly pipeline. Uses FastQC, Trimmomatic, BBNorm, MultiQC, and one of the assemblers: MEGAHIT, SPAdes, or Trinity.
 
 ### `ProtSearch.sh`
 
-Prediz proteinas com Prodigal e busca dominios com HMMER (`hmmsearch`).
+Predicts proteins with Prodigal and searches for domains with HMMER (`hmmsearch`).
 
 ### `get_Seq_results.sh`
 
-Extrai IDs de proteinas da tabela HMMER e recupera sequencias correspondentes com SeqTK.
+Extracts protein IDs from the HMMER table and recovers corresponding sequences with SeqTK.
 
 ### `map_reads.sh`
 
-Script auxiliar para mapear reads contra um FASTA de referencia. Usa Bowtie2 e Samtools, criando resultados em `06_Mapping_Results`. Atualmente nao e chamado diretamente por nenhuma das 5 abas principais da GUI.
+Auxiliary script to map reads against a reference FASTA. Uses Bowtie2 and Samtools, creating results in `06_Mapping_Results`. Currently, it is not called directly by any of the 5 main GUI tabs.
 
 ### `setup.sh`
 
-Script historico de instalacao local via `apt`/`pip`. Com Docker ou Singularity, a instalacao das dependencias passa a ser feita pela imagem, entao esse script tende a ser desnecessario para usuarios de container.
+Historical local installation script via `apt`/`pip`. With Docker or Singularity, dependency installation is handled by the image, so this script tends to be unnecessary for container users.
 
-## Estrutura de Saida
+## Output Structure
 
-Um fluxo completo para um accession SRA tende a criar uma estrutura como:
+A complete flow for an SRA accession tends to create a structure like:
 
-```text
+Plaintext
+
+```
 SRA_ID/
 ├── 01_QC_Reports/
 ├── 02_Trimmed_Reads/
@@ -358,12 +441,21 @@ SRA_ID/
 └── lectin_hits.faa
 ```
 
-Algumas pastas podem variar conforme as opcoes escolhidas, o tipo de amostra e a etapa executada.
+Some folders may vary according to the chosen options, sample type, and step executed.
 
-## Observacoes
+## Notes
 
-- O programa depende de display grafico X11 quando executado em Docker.
-- Os resultados sao gerados dentro da pasta do projeto quando a execucao usa o `make docker-run`, pois o diretorio atual e montado em `/app`.
-- Trinity aumenta significativamente o tamanho da imagem, mas permite manter o fluxo de transcriptomica na mesma imagem que MEGAHIT e SPAdes.
-- Se o Trinity reclamar que `salmon` nao esta instalado, reconstrua a imagem atualizada. O `salmon` e uma dependencia de runtime do Trinity e deve estar presente na imagem Docker/Singularity.
-- Avisos do MultiQC sobre arquivos `assets/js/packages/*.js` ausentes podem aparecer em algumas versoes empacotadas pelo Debian. Quando o log termina com `MultiQC complete`, esses avisos nao interrompem o pipeline; eles afetam apenas recursos embutidos no relatorio HTML.
+- The program depends on an X11 graphical display when executed in Docker.
+
+- Results are generated within the project folder when execution uses `make docker-run`, as the current directory is mounted to `/app`.
+
+- Trinity significantly increases the image size but allows keeping the transcriptomics workflow in the same image as MEGAHIT and SPAdes.
+
+- If Trinity complains that `salmon` is not installed, rebuild the updated image. `Salmon` is a runtime dependency of Trinity and must be present in the Docker/Singularity image.
+
+- MultiQC warnings about missing `assets/js/packages/*.js` files may appear in some Debian-packaged versions. When the log ends with `MultiQC complete`, these warnings do not interrupt the pipeline; they only affect features embedded in the HTML report.
+
+## Development Team
+
+Marauder's GenoMap was developed by Djorkaeff Oliveira, Rodrigo Orvate, João Pedro Lemos e Silva Rodrigues, and João Paulo MS Lima.
+[EvoMol-Lab](evomol-lab.imd.ufrn.br), BioMe, UFRN, Brazil.
