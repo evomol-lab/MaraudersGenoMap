@@ -1,138 +1,369 @@
-![MaraudersGenoMap](MaraudersGenoMap.png)
------
+# Marauders GenoMap
 
-# Marauder's GenoMap 🗺️
+Marauders GenoMap e uma interface grafica em Python/PyQt6 para baixar dados SRA, executar montagem genomica/transcriptomica, buscar dominios proteicos com HMMER e explorar os resultados gerados em pastas organizadas por accession SRA.
 
-A comprehensive pipeline for the discovery of protein domains and families in *de novo* assembled genomes and transcriptomes.
+O programa foi pensado para execucao local. A GUI chama os scripts da pasta `scripts/` e cada etapa cria subpastas dentro da pasta do codigo SRA informado, por exemplo `SRRXXXXXX/01_QC_Reports`, `SRRXXXXXX/05_Assembly_Results` e `SRRXXXXXX/02_HMMER_Results`.
 
------
+## Docker e Singularity/Apptainer
 
-`Marauder's GenoMap` is a bioinformatics pipeline designed to prospect for and identify specific protein domains and families in genomes or transcriptomes, particularly for non-model organisms for which no reference genome is available. It can also be used to perform comparative genomics and to search for unidentified potential biotechnological targets.
+O projeto inclui arquivos para gerar uma imagem local com as dependencias principais:
 
-The pipeline automates the entire discovery process, from raw sequencing data to a final list of protein sequences. It begins by retrieving data from the [SRA](https://www.ncbi.nlm.nih.gov/sra), performs quality control and *de novo* assembly, predicts protein-coding genes, and finally uses [HMMER](http://hmmer.org/) and [Pfam](http://pfam.xfam.org/) profiles to perform a sensitive protein family search. This approach allows identification of retained protein function, even with low sequence identity.
+- `Dockerfile`: imagem Docker baseada em `debian:trixie-slim`.
+- `.dockerignore`: evita copiar ambientes virtuais, dados SRA, FASTQ, BAM/SAM, FASTA, resultados e caches para dentro da imagem.
+- `Makefile`: atalhos para build e execucao.
 
-This pipeline is optimized for gene discovery and annotation. It does not focus on differential gene expression or other quantitative analyses.
+A imagem inclui MEGAHIT, SPAdes e Trinity, alem de Salmon, SRA Toolkit, FastQC, Trimmomatic, BBMap, MultiQC, Prodigal, HMMER, SeqTK, Bowtie2, Samtools, PyQt6, Pandas, Matplotlib e Biopython.
 
-## Features
+### Obter imagem Docker no DockerHub
 
-  * **Automated Data Retrieval**: Downloads raw sequencing data directly from the SRA using SRA-Toolkit.
-  * **Robust QC**: Integrates [**FastQC**](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) and [**MultiQC**](https://seqera.io/multiqc/) for comprehensive quality control reporting before and after trimming.
-  * **Flexible Assembly Options**: Supports multiple state-of-the-art assemblers for different data types and hardware constraints:
-      * [**MEGAHIT**](https://github.com/voutcn/megahit): A memory-efficient and fast assembler, ideal for single genomes on standard hardware.
-      * [**SPAdes**](https://github.com/ablab/spades): A highly accurate assembler, recommended for systems with significant RAM (\>64 GB).
-      * [**Trinity**](https://github.com/trinityrnaseq/trinityrnaseq/wiki): The gold standard for *de novo* transcriptome (RNA-Seq) assembly.
-  * **Read Normalization**: Includes an optional digital normalization step with [**BBnorm**](https://archive.jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbnorm-guide/) to reduce dataset complexity and lower memory requirements for assembly.
-  * **Accurate Gene Prediction**: Uses [**Prodigal**](https://github.com/hyattpd/Prodigal) to identify protein-coding genes within the assembled contigs/scaffolds.
-  * **Sensitive Protein Search**: Employs **HMMER** for sensitive homology searches, allowing for the discovery of both close and distant family members.
-  * **Automated Sequence Extraction**: Includes a final step to automatically parse search HMMER results and extract the identified protein sequences into a clean FASTA file using **seqtk**.
-
-## Pipeline Overview
-
-The pipeline follows a logical flow from raw data to final results. The user can choose the appropriate assembly path based on their data type (genomic or transcriptomic) and available computational resources.
-
-```mermaid
-graph TD;
-    A[Raw SRA Data] --> B(Step 1: Download & QC);
-    B --> C{Step 2: De Novo Assembly};
-    subgraph Assembly Options
-        direction LR
-        C1[MEGAHIT for Genomes]
-        C2[SPAdes for Genomes]
-        C3[Trinity for Transcriptomes]
-    end
-    C --> C1;
-    C --> C2;
-    C --> C3;
-    C1 --> D(Step 3: Gene Prediction with Prodigal);
-    C2 --> D;
-    C3 --> D;
-    D --> E{Step 4: HMMER Search with Pfam Profile};
-    E --> F[Final Protein Sequences];
-```
-
-## Prerequisites
-
-To run this pipeline, you will need the following bioinformatics tools installed. On a Debian/Ubuntu-based system, most can be installed with `apt`.
-
-  * SRA Toolkit
-  * FastQC & MultiQC
-  * Trimmomatic
-  * BBTools
-  * SPAdes
-  * MEGAHIT
-  * Trinity
-  * Prodigal
-  * HMMER
-  * seqtk
-
-**Installation Example (Ubuntu/Debian):**
-You can execute the [`setup.sh`](setup.sh) file to install all the above tools.
-
-## Usage
-
-The pipeline is run as a series of scripts.
-
-### Part 1: Retrieving the data (`SRAget.sh`)
-
-The script [`SRAget.sh`](SRAget.sh) download and proccess the NGS sequecing files. 
+Para baixar a versão mais recente, execute o comando abaixo no seu terminal:
 
 ```bash
-./get.sh <SRA_accession>
+docker pull evomol/marauders-genomap
 ```
-### Part 2: Assembly (`assembly*.sh`)
 
-This script handles data download, QC, trimming, normalization, and assembly. Choose the correct script to execute.
-- [assembly-spades.sh](assembly-spades.sh).
-- [assembly-megahit.sh](assembly-megahit.sh).
-- [assembly-trinity.sh](assembly-trinity.sh) - NEW.
-
-#### Choosing the Assembly Script:
-
-Choosing the appropriate tool depends on your research goals, available hardware/computer resources, and personal preference (see the summary table below). If your system has less than 64 GB of RAM, we recommend starting with MEGAHIT.
-
-SPAdes and Trinity are significantly more memory-intensive. While the scripts provided below include options to cap RAM usage for these programs, please note that such limitations may render the assembly unfeasible depending on the size and complexity of your dataset—either due to excessive processing times or reaching computational limits.
-
-Read normalization via **BBnorm** is only performed for MEGAHIT and SPAdes. In contrast, Trinity features an integrated in silico normalization utility, which it runs by default to minimize memory overhead.
-
-| Script | Data Type | Recommended RAM | Notes |
-| :--- | :--- | :--- | :--- |
-| [assembly-spades.sh](assembly-spades.sh) | Genomic | \>64 GB | High accuracy |
-| [assembly-megahit.sh](assembly-megahit.sh) | Genomic | \<8 GB | Fast and memory-efficient |
-| [assembly-trinity.sh](assembly-trinity.sh) | Transcriptomic | \<8 GB | Gold standard for RNA-Seq |
-
-#### Configure the script:
-Ensure the paths and parameters inside the script (e.g., adapter file location) are correct for your system.
-#### Execute:
+e rodar a imagem:
 
 ```bash
-./assembly_megahit.sh SRR_ACCESSION_1.fastq.gz SRR_ACCESSION_2.fastq.gz
+docker run --rm -it \
+    --network host \
+    --user $(id -u):$(id -g) \
+    -e DISPLAY=$DISPLAY \
+    -e XAUTHORITY=/tmp/.Xauthority \
+    -e HOME=/tmp \
+    -e QT_X11_NO_MITSHM=1 \
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+    -v "${XAUTHORITY:-$HOME/.Xauthority}":/tmp/.Xauthority:ro \
+    -v "$(pwd)":/data \
+    -w /data \
+    evomol/marauders-genomap:latest bash -c "python3 /app/marauders.py"
 ```
-    
-This will produce an output directory (e.g., `05_MEGAHIT_Assembly_...`) containing your final assembly file, `final.contigs.fa`.
 
-### Part 2: Protein Search (`ProtSearch.sh`)
-
-This script predicts genes and searches for your protein family.
-
-#### Download an HMM Profile: 
-Obtain a profile for your family of interest from the [Pfam database](https://www.ebi.ac.uk/interpro/entry/pfam/).
-#### Execute:
+### Gerar imagem Docker local
 
 ```bash
-./ProtSearch.sh 05_MEGAHIT_Assembly/final.contigs.fa Your_Family.hmm
+make docker-build
 ```
-This generates a directory (`02_HMMER_Results`) containing a table of significant hits.
 
-### Part 3: Sequence Extraction (`get_Seq_results.sh`)
-
-This final script retrieves the full sequences of the proteins you found.
-
-#### Execute:
+Esse alvo executa o build com nome/tag definido:
 
 ```bash
-./get_Seq_results.sh 02_HMMER_Results/Your_Family_hits.tbl 01_Predicted_Proteins/predicted_proteins.faa
+docker build --no-cache -t marauders-genomap .
 ```
 
-The final output is a clean FASTA file (e.g., `protein_hits.faa`) containing only the protein sequences of interest, ready for further analysis.
+O uso de `-t marauders-genomap:latest` e importante porque da um nome previsivel para a imagem final. Sem essa tag, o Docker ainda cria a imagem, mas ela pode ficar sem nome claro, dificultando a execucao depois.
 
------
+O `--no-cache` evita reaproveitar camadas antigas quando a base ou as dependencias mudam.
+
+Para fazer um build mais rapido reaproveitando cache:
+
+```bash
+make docker-build-cache
+```
+
+Esse alvo equivale a:
+
+```bash
+docker build -t marauders-genomap .
+```
+
+Depois do build, e normal aparecerem pelo menos duas imagens ao listar com `docker images` ou ferramentas graficas:
+
+- `debian:trixie-slim`: imagem base baixada pelo Docker, pequena, usada para construir a imagem final;
+- `marauders-genomap:latest`: imagem final do Marauders GenoMap, esta e a imagem que deve ser executada.
+
+A imagem `debian:trixie-slim` pode ficar no sistema sem problema. Ela ocupa pouco espaco e acelera builds futuros. Se quiser remover, use:
+
+```bash
+docker rmi debian:trixie-slim
+```
+
+### Rodar a GUI com Docker
+
+Antes de abrir a interface, permita acesso local ao servidor X11:
+
+```bash
+xhost +local:docker
+```
+
+Depois, entre na pasta do projeto, onde esta o `Makefile`, e inicie a imagem final `marauders-genomap:latest`:
+
+```bash
+cd /caminho/para/sua/pasta/de/projetos
+make docker-run
+```
+
+O `make docker-run` precisa ser executado dentro da pasta do Marauders GenoMap. O `make` procura o `Makefile` no diretorio atual, e esse alvo monta a pasta atual (`$PWD`) em `/app` dentro do container.
+
+Se quiser iniciar a imagem de qualquer outro diretorio, use o comando Docker completo apontando para a pasta do projeto:
+
+```bash
+docker run --rm -it \
+  --network host \
+  --user $(id -u):$(id -g) \
+  -e DISPLAY=$DISPLAY \
+  -e XAUTHORITY=/tmp/.Xauthority \
+  -e HOME=/tmp \
+  -e QT_X11_NO_MITSHM=1 \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v "${XAUTHORITY:-$HOME/.Xauthority}:/tmp/.Xauthority:ro" \
+  -v "/caminho/para/sua/pasta/de/projetos":/app \
+  -w /app \
+  marauders-genomap:latest
+```
+
+O alvo `make docker-run` executa a mesma ideia, usando automaticamente a pasta atual (deve estar na pasta do Marauders).
+
+O `docker-run` monta a pasta atual em `/app`, entao os arquivos baixados e resultados permanecem no diretorio do projeto, nao dentro de uma camada temporaria do container.
+
+Ao terminar, voce pode revogar a permissao:
+
+```bash
+xhost -local:docker
+```
+
+### Usar com Singularity/Apptainer
+
+O projeto nao precisa manter um `Singularity.def` separado se a imagem Docker for publicada no Docker Hub ou em outro registry compativel. Singularity/Apptainer conseguem baixar uma imagem Docker diretamente e converter para `.sif` localmente.
+
+Com Singularity:
+
+```bash
+singularity pull marauders-genomap.sif docker://evomol/marauders-genomap
+```
+
+Depois rode:
+
+```bash
+singularity run \
+  --writable-tmpfs \
+  --bind "$PWD":/app \
+  --bind /tmp/.X11-unix:/tmp/.X11-unix \
+  --bind "${XAUTHORITY:-$HOME/.Xauthority}":/tmp/.Xauthority:ro \
+  --env DISPLAY=$DISPLAY,QT_X11_NO_MITSHM=1,XAUTHORITY=/tmp/.Xauthority,HOME=/tmp \
+  marauders-genomap.sif
+```
+
+Com Apptainer:
+
+```bash
+apptainer pull marauders-genomap.sif docker://evomol/marauders-genomap
+```
+
+Depois rode:
+
+```bash
+apptainer run \
+  --writable-tmpfs \
+  --bind "$PWD":/app \
+  --bind /tmp/.X11-unix:/tmp/.X11-unix \
+  --bind "${XAUTHORITY:-$HOME/.Xauthority}":/tmp/.Xauthority:ro \
+  --env DISPLAY=$DISPLAY,QT_X11_NO_MITSHM=1,XAUTHORITY=/tmp/.Xauthority,HOME=/tmp \
+  marauders-genomap.sif
+```
+
+O Docker Hub hospeda imagens Docker. Ele não é, em geral, um repositorio nativo de arquivos `.sif`, mas pode servir a mesma imagem Docker para usuarios Docker e tambem para usuarios Singularity/Apptainer.
+
+## Como Executar Localmente Sem Container
+
+Se as dependencias ja estiverem instaladas no sistema:
+
+```bash
+make run
+```
+
+O alvo `install` cria um comando local chamado `marauders`, apontando para a pasta atual:
+
+```bash
+make install
+```
+
+Para remover:
+
+```bash
+make uninstall
+```
+
+## Fluxo das Abas do Programa
+
+O programa possui 5 abas principais. O ID SRA informado na primeira aba e usado pelas demais etapas para localizar entradas e resultados automaticamente.
+
+### 1. Download
+
+Funcao: baixar os dados brutos do SRA e preparar os FASTQ compactados.
+
+Script usado:
+
+- `scripts/SRAget.sh`
+
+O que a aba faz:
+
+- recebe o accession SRA;
+- permite escolher o tipo de amostra;
+- para transcriptomica/metatranscriptomica, permite escolher layout paired-end ou single-end;
+- cria uma pasta com o nome do accession;
+- executa `prefetch`;
+- executa `fasterq-dump` ou `fastq-dump` como fallback;
+- compacta os FASTQ com `pigz`.
+
+Arquivos esperados apos a etapa:
+
+- `SRA_ID/SRA_ID_1.fastq.gz` e `SRA_ID/SRA_ID_2.fastq.gz` para paired-end;
+- `SRA_ID/SRA_ID.fastq.gz` para single-end.
+
+### 2. Assembly
+
+Funcao: executar controle de qualidade, trimming, normalizacao, MultiQC e montagem.
+
+Script usado:
+
+- `scripts/run_assembly.sh`
+
+O que a aba faz:
+
+- seleciona o montador: MEGAHIT, SPAdes ou Trinity;
+- ajusta threads e RAM;
+- mostra uma recomendacao de GB por thread;
+- permite remover arquivos brutos e/ou a pasta de trimming ao final;
+- roda FastQC, Trimmomatic, BBNorm, MultiQC e o montador escolhido.
+
+Regras da interface:
+
+- MEGAHIT e recomendado para metagenomas e execucao rapida;
+- SPAdes fica disponivel para genomica de isolados;
+- Trinity fica disponivel para transcriptomica e metatranscriptomica.
+
+Pastas criadas dentro da pasta SRA:
+
+- `01_QC_Reports`
+- `02_Trimmed_Reads`
+- `03_Normalized_Reads`
+- `04_MultiQC_Report`
+- `05_Assembly_Results`
+
+Saidas principais:
+
+- MEGAHIT: `05_Assembly_Results/MEGAHIT_*/final.contigs.fa`
+- SPAdes: `05_Assembly_Results/SPADES_*/scaffolds.fasta` ou `contigs.fasta`
+- Trinity: arquivos `*.Trinity.fasta`
+
+### 3. Protein Search
+
+Funcao: predizer proteinas a partir dos contigs e buscar dominios usando um perfil HMM.
+
+Script usado:
+
+- `scripts/ProtSearch.sh`
+
+O que a aba faz:
+
+- recebe um arquivo `.hmm`;
+- detecta automaticamente o arquivo de contigs gerado pelo montador selecionado;
+- escolhe o modo do Prodigal:
+  - `single` para genomica;
+  - `meta` para metagenomica/metatranscriptomica;
+- executa Prodigal para gerar proteinas preditas;
+- executa `hmmsearch` para gerar a tabela de hits.
+
+Pastas criadas dentro da pasta SRA:
+
+- `01_Predicted_Proteins`
+- `02_HMMER_Results`
+
+Saidas principais:
+
+- `01_Predicted_Proteins/predicted_proteins.faa`
+- `02_HMMER_Results/*_domain_hits.tbl`
+
+### 4. Get Results
+
+Funcao: extrair sequencias proteicas associadas aos hits detectados pelo HMMER.
+
+Script usado:
+
+- `scripts/get_Seq_results.sh`
+
+O que a aba faz:
+
+- localiza automaticamente a tabela `.tbl` em `02_HMMER_Results`;
+- localiza `01_Predicted_Proteins/predicted_proteins.faa`;
+- extrai IDs unicos da primeira coluna da tabela HMMER;
+- usa `seqtk subseq` para recuperar as sequencias correspondentes.
+
+Saidas principais:
+
+- `protein_ids_to_extract.txt` temporario;
+- `lectin_hits.faa` com as sequencias extraidas.
+
+### 5. Analise & Cortes
+
+Funcao: visualizar hits, selecionar alvos e extrair/cortar sequencias especificas.
+
+Scripts usados:
+
+- essa aba usa funcoes internas do `marauders.py`;
+- nao chama um script externo diretamente.
+
+O que a aba faz:
+
+- carrega automaticamente uma tabela `.tbl` da pasta `SRA_ID/02_HMMER_Results`;
+- tambem permite selecionar uma tabela `.tbl` manualmente;
+- filtra hits com `full_E-value < 0.0001`;
+- mostra os 25 primeiros hits;
+- ao clicar em uma linha, transfere o `target_name` para o extrator Severus Snap(e);
+- localiza automaticamente `SRA_ID/01_Predicted_Proteins/predicted_proteins.faa` ou aceita um FASTA manual;
+- salva sequencias encontradas pelo termo informado;
+- quando possivel, corta a regiao usando coordenadas presentes na descricao FASTA;
+- gera histograma de tamanhos das sequencias com Matplotlib.
+
+## Scripts da Pasta `scripts/`
+
+### `SRAget.sh`
+
+Baixa e extrai leituras SRA. Usa `prefetch`, `fasterq-dump`, fallback com `fastq-dump` e compactacao com `pigz`.
+
+### `run_assembly.sh`
+
+Executa o pipeline de montagem. Usa FastQC, Trimmomatic, BBNorm, MultiQC e um dos montadores: MEGAHIT, SPAdes ou Trinity.
+
+### `ProtSearch.sh`
+
+Prediz proteinas com Prodigal e busca dominios com HMMER (`hmmsearch`).
+
+### `get_Seq_results.sh`
+
+Extrai IDs de proteinas da tabela HMMER e recupera sequencias correspondentes com SeqTK.
+
+### `map_reads.sh`
+
+Script auxiliar para mapear reads contra um FASTA de referencia. Usa Bowtie2 e Samtools, criando resultados em `06_Mapping_Results`. Atualmente nao e chamado diretamente por nenhuma das 5 abas principais da GUI.
+
+### `setup.sh`
+
+Script historico de instalacao local via `apt`/`pip`. Com Docker ou Singularity, a instalacao das dependencias passa a ser feita pela imagem, entao esse script tende a ser desnecessario para usuarios de container.
+
+## Estrutura de Saida
+
+Um fluxo completo para um accession SRA tende a criar uma estrutura como:
+
+```text
+SRA_ID/
+├── 01_QC_Reports/
+├── 02_Trimmed_Reads/
+├── 03_Normalized_Reads/
+├── 04_MultiQC_Report/
+├── 05_Assembly_Results/
+├── 01_Predicted_Proteins/
+├── 02_HMMER_Results/
+└── lectin_hits.faa
+```
+
+Algumas pastas podem variar conforme as opcoes escolhidas, o tipo de amostra e a etapa executada.
+
+## Observacoes
+
+- O programa depende de display grafico X11 quando executado em Docker.
+- Os resultados sao gerados dentro da pasta do projeto quando a execucao usa o `make docker-run`, pois o diretorio atual e montado em `/app`.
+- Trinity aumenta significativamente o tamanho da imagem, mas permite manter o fluxo de transcriptomica na mesma imagem que MEGAHIT e SPAdes.
+- Se o Trinity reclamar que `salmon` nao esta instalado, reconstrua a imagem atualizada. O `salmon` e uma dependencia de runtime do Trinity e deve estar presente na imagem Docker/Singularity.
+- Avisos do MultiQC sobre arquivos `assets/js/packages/*.js` ausentes podem aparecer em algumas versoes empacotadas pelo Debian. Quando o log termina com `MultiQC complete`, esses avisos nao interrompem o pipeline; eles afetam apenas recursos embutidos no relatorio HTML.
