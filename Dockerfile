@@ -16,7 +16,7 @@ RUN apt-get update \
         fastqc \
         fonts-noto-color-emoji \
         hmmer \
-	libxcb-cursor0 \
+        libxcb-cursor0 \
         megahit \
         multiqc \
         parallel \
@@ -37,5 +37,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY . /app
+
+# Copia os scripts para um local fixo fora de /app,
+# para que o volume mount do docker-run não os apague.
+RUN cp -r /app/scripts /opt/marauders-scripts \
+    && chmod +x /opt/marauders-scripts/*.sh
 
 CMD ["python3", "marauders.py"]

@@ -19,6 +19,12 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import QProcess, Qt
 from PyQt6.QtGui import QFont
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.join(_HERE, "scripts")
+if not os.path.isdir(SCRIPT_DIR):
+    SCRIPT_DIR = "/opt/scripts"
+
+
 class MaraudersApp(QMainWindow):
     def __init__(self):
         super().__init__()
